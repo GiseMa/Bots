@@ -1,0 +1,77 @@
+body {
+    background-color: #36393f;
+    color: #dcddde;
+    font-family: Arial, sans-serif;
+}
+.message {
+    margin: 10px 0;
+    padding: 10px;
+    border-radius: 5px;
+    background-color: #2f3136;
+    display: flex;
+    align-items: center;
+    scroll-margin-top: 50px; /* adjust to your header height */
+}
+.avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 10px;
+}
+.content {
+    flex: 1;
+}
+.username {
+    font-weight: bold;
+    color: #7289da;
+}
+.timestamp {
+    font-size: 0.75em;
+    color: #72767d;
+    margin-left: 10px;
+}
+.reply {
+    background-color: #292b2f;
+    padding: 5px;
+    border-left: 2px solid #7289da;
+    margin-bottom: 5px;
+    font-size: 0.9em;
+}
+img {
+    max-width: 400px;
+    border-radius: 5px;
+    margin-top: 10px;
+}
+a {
+    color: #7289da;
+    text-decoration: none;
+}
+a:hover {
+    text-decoration: underline;
+}
+.reply-link {
+    display: inline-block;
+    margin-top: 5px;
+    font-size: 0.85em;
+}
+.embed {
+    border-left: 4px solid #7289da;
+    padding-left: 10px;
+    margin: 10px 0;
+}
+.button {
+    margin: 5px;
+    padding: 5px 10px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    display: inline-block;
+}
+.button-primary {
+    background-color: #7289da;
+    color: white;
+}
+.button-secondary {
+    background-color: #4f545c;
+    color: white;
+}
