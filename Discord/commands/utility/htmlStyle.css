@@ -75,3 +75,42 @@ a:hover {
     background-color: #4f545c;
     color: white;
 }
+
+.embed {
+    border: 1px solid #2f3136;
+    padding: 10px;
+    margin-bottom: 10px;
+    background-color: #36393f;
+    border-radius: 5px;
+}
+
+.embed-fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.embed-field {
+    flex: 1 1 45%;
+}
+
+.embed-field-name {
+    font-weight: bold;
+    color: #00b0f4;
+}
+
+.embed-field-value {
+    color: #dcddde;
+}
+
+.embed-footer {
+    margin-top: 10px;
+    color: #72767d;
+    font-size: 0.9em;
+}
+
+.embed-image {
+    margin-top: 10px;
+    max-width: 100%;
+    border-radius: 5px;
+}

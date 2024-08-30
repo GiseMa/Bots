@@ -3,14 +3,18 @@ const fs = require('fs');
 const path = require('node:path');
 const axios = require('axios');
 
-const TARGET_CHANNEL_ID = '1276643047853129881'; 
+const TARGET_CHANNEL_ID = '1279182539935842397'; // ID del canal al que enviar el archivo
+const allowedUserIds = [
+    '1257631834951516185',
+    '1085379498977017896',
+]; // IDs de usuarios permitidos
+
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('descargar')
-        .setDescription('Descarga toda la conversación'),
+        .setDescription('Descarga toda la conversación y elimina el canal'),
+    
     async execute(interaction) {
-        const allowedUserIds = ['1085379498977017896']; // Reemplaza estos valores con los IDs de usuario permitidos
-
         // Check if the user is allowed to use this command
         if (!allowedUserIds.includes(interaction.user.id)) {
             return await interaction.reply({ content: 'No tienes permiso para usar este comando.', ephemeral: true });
@@ -18,21 +22,17 @@ module.exports = {
 
         await interaction.deferReply({ ephemeral: true }); // Defer the reply to prevent interaction timeout
 
-        const restrictedCategoryIds = ['1276634760357085204'];
-        const userEnabledId = '1085379498977017896';
+        const allowedCategoryIds = ['1276634815717707849', '1257667147476238420']; // IDs de categorías permitidas
 
-        if (restrictedCategoryIds.includes(interaction.channel.parentId)) {
-            if (interaction.user.id === userEnabledId) {
-                const embed = new EmbedBuilder()
-                    .setColor(0xff0000)
-                    .setTitle('Acción restringida')
-                    .setDescription('Este canal no puede ser eliminado ya que pertenece a la lista de categorías que no se deben eliminar');
+        // Check if the channel is in an allowed category
+        if (!allowedCategoryIds.includes(interaction.channel.parentId)) {
+            const embed = new EmbedBuilder()
+                .setColor(0xff0000)
+                .setTitle('Acción restringida')
+                .setDescription('Este canal no puede ser procesado ya que no pertenece a una categoría permitida.');
 
-                // Send the reply with the embed
-                await interaction.editReply({ embeds: [embed], ephemeral: true });
-            } else {
-                await interaction.editReply({ content: 'No tienes permisos para realizar este comando', ephemeral: true });
-            }
+            // Send the reply with the embed
+            await interaction.editReply({ embeds: [embed], ephemeral: true });
             return;
         }
 
@@ -52,6 +52,9 @@ module.exports = {
                 messages = messages.concat(Array.from(fetchedMessages.values()));
                 lastMessageId = fetchedMessages.last().id;
             }
+
+            // Reverse the order of the messages so the first message appears first in the HTML
+            messages.reverse();
 
             // Create a temporary directory for attachments
             const tempDir = path.join(__dirname, 'temp');
@@ -149,8 +152,35 @@ module.exports = {
                 if (message.embeds.length > 0) {
                     message.embeds.forEach(embed => {
                         htmlContent += `<div class="embed">`;
-                        if (embed.title) htmlContent += `<div><strong>${embed.title}</strong></div>`;
-                        if (embed.description) htmlContent += `<div>${embed.description.replace(/\n/g, '<br>')}</div>`;
+                        
+                        if (embed.title) {
+                            htmlContent += `<div><strong>${embed.title}</strong></div>`;
+                        }
+
+                        if (embed.description) {
+                            htmlContent += `<div>${embed.description.replace(/\n/g, '<br>')}</div>`;
+                        }
+
+                        if (embed.fields.length > 0) {
+                            htmlContent += `<div class="embed-fields">`;
+                            embed.fields.forEach(field => {
+                                htmlContent += `
+                                    <div class="embed-field">
+                                        <div class="embed-field-name"><strong>${field.name}</strong></div>
+                                        <div class="embed-field-value">${field.value.replace(/\n/g, '<br>')}</div>
+                                    </div>`;
+                            });
+                            htmlContent += `</div>`;
+                        }
+
+                        if (embed.footer) {
+                            htmlContent += `<div class="embed-footer">${embed.footer.text}</div>`;
+                        }
+
+                        if (embed.image) {
+                            htmlContent += `<img src="${embed.image.url}" alt="Embed Image" class="embed-image" />`;
+                        }
+
                         htmlContent += `</div>`;
                     });
                 }
@@ -178,17 +208,23 @@ module.exports = {
                 throw new Error('El canal de destino no es válido.');
             }
 
-            await targetChannel.send({ content: 'Aca esta la conversación:', files: [htmlFilePath] });
+            const sentMessage = await targetChannel.send({ content: 'Aquí está la conversación:', files: [htmlFilePath] });
 
-            // Reply to the interaction
-            await interaction.editReply({ content: 'El archivo de la conversación ha sido enviado al canal especificado.', ephemeral: true });
+            // Check if the message was sent successfully
+            if (sentMessage) {
+                // Delete the channel where the command was executed
+                const channel = interaction.channel;
+                await channel.delete();
+            } else {
+                await interaction.editReply({ content: 'El archivo no se pudo enviar al canal especificado.', ephemeral: true });
+            }
 
             // Delete the HTML file after it has been sent
             fs.unlinkSync(htmlFilePath);
 
         } catch (error) {
             console.error(error);
-            await interaction.editReply({ content: 'Hubo un error al descargar la conversación.', ephemeral: true });
+            await interaction.editReply({ content: 'Hubo un error al procesar el comando.', ephemeral: true });
         }
     },
 };
