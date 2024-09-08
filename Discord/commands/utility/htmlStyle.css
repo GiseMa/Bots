@@ -10,7 +10,7 @@ body {
     background-color: #2f3136;
     display: flex;
     align-items: center;
-    scroll-margin-top: 50px; /* adjust to your header height */
+    scroll-margin-top: 50px; 
 }
 .avatar {
     width: 40px;
