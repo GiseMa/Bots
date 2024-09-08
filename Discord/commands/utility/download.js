@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('node:path');
 const axios = require('axios');
 
-const TARGET_CHANNEL_ID = '1276643047853129881'; // ID del canal al que enviar el archivo
+const TARGET_CHANNEL_ID = '1279182539935842397'; // ID del canal al que enviar el archivo
 const allowedUserIds = [
     '1257631834951516185',
     '1085379498977017896',
@@ -22,7 +22,7 @@ module.exports = {
 
         await interaction.deferReply({ ephemeral: true }); 
 
-        const allowedCategoryIds = ['1276634815717707849', '1257667147476238420']; // IDs de categorías permitidas
+        const allowedCategoryIds = ['1257667147476238420']; // IDs de categorías permitidas
 
        
         if (!allowedCategoryIds.includes(interaction.channel.parentId)) {
