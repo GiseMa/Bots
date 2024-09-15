@@ -24,7 +24,7 @@ module.exports = {
 
         await interaction.deferReply({ ephemeral: true }); 
 
-        const allowedCategoryIds = ['1257667147476238420', ]; // IDs de categorías permitidas
+        const allowedCategoryIds = ['1257667147476238420', '1276634815717707849']; // IDs de categorías permitidas
 
        
         if (!allowedCategoryIds.includes(interaction.channel.parentId)) {
@@ -39,6 +39,7 @@ module.exports = {
 
         try {
             const channel = interaction.channel;
+            const guild = channel.guild;
 
             const sheetIds = await getSheetData();
 
@@ -57,10 +58,11 @@ module.exports = {
                 await interaction.editReply({content: 'No se pudo obtener lista de miembros debido a un tiempo de espera', ephemeral: true});
                 return;
             }
-          /*  const withoutBots = members.filter(member => !member.user.bot);
-            const mentions = withoutBots.map(member => `<@${member.id}>`); */
 
-            const notInSheet = members.filter(member => !sheetIds.includes(member.id)).map(member => `<@${member.id}>`);
+            const notInSheet = members.filter(member => !sheetIds.includes(member.id)).map(member =>({
+                id: member.id,
+                mention: `<@${member.id}>`
+            }));
 
 
             while (true) {
@@ -221,7 +223,9 @@ module.exports = {
             }
 
             const sentMessage = await targetChannel.send({ content: 
-                 `Aca esta el historial de: ${channel.name}\nServidor = ${guild.id}\nUsuarios: ${notInSheet.join(' ')}`, 
+                 `Aca esta el historial de: ${channel.name}
+                 \nServidor = ${guild.id}
+                 \nUsuarios: ${notInSheet.map(member => `${member.mention} (${member.id})`).join(' ')}  `,         
                  files: [htmlFilePath] 
                 });
 

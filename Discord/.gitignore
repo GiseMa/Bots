@@ -1,3 +1,9 @@
 node_modules
 config.json
 credentials.json
+NG-Bot-Discord.pem
+NG-Bot-Discord.zip
+discordbot.pem
+../*.pem
+../*.zip
+
