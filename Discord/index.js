@@ -5,7 +5,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const client = new Client({intents:
-    [GatewayIntentBits.Guilds]
+    [GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildMembers
+    ]
 });
 
 client.commands = new Collection();

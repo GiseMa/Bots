@@ -1,9 +1,11 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, Client, GatewayIntentBits } = require('discord.js');
 const fs = require('fs');
 const path = require('node:path');
 const axios = require('axios');
+const { getSheetData } = require('../../sheetExporter');
 
-const TARGET_CHANNEL_ID = '1279182539935842397'; // ID del canal al que enviar el archivo
+const TARGET_CHANNEL_ID = '1279182539935842397';
+
 const allowedUserIds = [
     '1257631834951516185',
     '1085379498977017896',
@@ -22,7 +24,7 @@ module.exports = {
 
         await interaction.deferReply({ ephemeral: true }); 
 
-        const allowedCategoryIds = ['1257667147476238420']; // IDs de categorías permitidas
+        const allowedCategoryIds = ['1257667147476238420', ]; // IDs de categorías permitidas
 
        
         if (!allowedCategoryIds.includes(interaction.channel.parentId)) {
@@ -37,10 +39,29 @@ module.exports = {
 
         try {
             const channel = interaction.channel;
-            const serverId = interaction.guild.id;
-            const channelId = channel.id;
+
+            const sheetIds = await getSheetData();
+
             let messages = [];
             let lastMessageId = null;
+
+            const members = await channel.guild.members.fetch().catch(error =>{
+                if(error.code === 'GuildMembersTimeout'){
+                    console.log('Error fetching members: Timed out');
+                    return null;                    
+                }
+                throw error;
+            })
+
+            if(!members){
+                await interaction.editReply({content: 'No se pudo obtener lista de miembros debido a un tiempo de espera', ephemeral: true});
+                return;
+            }
+          /*  const withoutBots = members.filter(member => !member.user.bot);
+            const mentions = withoutBots.map(member => `<@${member.id}>`); */
+
+            const notInSheet = members.filter(member => !sheetIds.includes(member.id)).map(member => `<@${member.id}>`);
+
 
             while (true) {
                 const fetchedMessages = await channel.messages.fetch({ limit: 100, before: lastMessageId });
@@ -199,7 +220,10 @@ module.exports = {
                 throw new Error('El canal de destino no es válido.');
             }
 
-            const sentMessage = await targetChannel.send({ content: 'Aquí está la conversación:', files: [htmlFilePath] });
+            const sentMessage = await targetChannel.send({ content: 
+                 `Aca esta el historial de: ${channel.name}\nServidor = ${guild.id}\nUsuarios: ${notInSheet.join(' ')}`, 
+                 files: [htmlFilePath] 
+                });
 
             if (sentMessage) {
                 const channel = interaction.channel;
@@ -216,3 +240,4 @@ module.exports = {
         }
     },
 };
+         
