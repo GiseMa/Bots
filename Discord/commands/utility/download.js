@@ -4,7 +4,7 @@ const path = require('node:path');
 const axios = require('axios');
 const { getSheetData } = require('../../sheetExporter');
 
-const TARGET_CHANNEL_ID = /* '1279182539935842397', */ '1276643047853129881';
+const TARGET_CHANNEL_ID = '1279182539935842397';
 
 const allowedUserIds = [
     '1257631834951516185',
