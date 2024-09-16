@@ -40,11 +40,10 @@ module.exports = {
         try {
             const channel = interaction.channel;
             const guild = channel.guild;
+            const membersInChannel = channel.members;
 
             const sheetIds = await getSheetData();
 
-            let messages = [];
-            let lastMessageId = null;
 
             const members = await channel.guild.members.fetch().catch(error =>{
                 if(error.code === 'GuildMembersTimeout'){
@@ -54,16 +53,18 @@ module.exports = {
                 throw error;
             })
 
-            if(!members){
+            if(!membersInChannel){
                 await interaction.editReply({content: 'No se pudo obtener lista de miembros debido a un tiempo de espera', ephemeral: true});
                 return;
             }
 
-            const notInSheet = members.filter(member => !sheetIds.includes(member.id)).map(member =>({
+            const notInSheet = membersInChannel.filter(member => !sheetIds.includes(member.id)).map(member =>({
                 id: member.id,
                 mention: `<@${member.id}>`
             }));
 
+            let messages = [];
+            let lastMessageId = null;
 
             while (true) {
                 const fetchedMessages = await channel.messages.fetch({ limit: 100, before: lastMessageId });
@@ -225,7 +226,7 @@ module.exports = {
             const sentMessage = await targetChannel.send({ content: 
                  `Aca esta el historial de: ${channel.name}
                  \nServidor = ${guild.id}
-                 \nUsuarios: ${notInSheet.map(member => `${member.mention} (${member.id})`).join(' ')}  `,         
+                 \nUsuarios: ${notInSheet.map(member => `${membersInChannel.mention} (${member.id})`).join(' ')}  `,         
                  files: [htmlFilePath] 
                 });
 
