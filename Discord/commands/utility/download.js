@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, Client, GatewayIntentBits } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, PermissionsBitField } = require('discord.js');
 const fs = require('fs');
 const path = require('node:path');
 const axios = require('axios');
@@ -40,28 +40,33 @@ module.exports = {
         try {
             const channel = interaction.channel;
             const guild = channel.guild;
-            const membersInChannel = channel.members;
+            const allMembers = await guild.members.fetch();
 
             const sheetIds = await getSheetData();
 
+            const membersInChannel = allMembers
+            .filter(member => 
+                channel.permissionsFor(member).has(PermissionsBitField.Flags.ViewChannel) &&
+                channel.permissionsFor(member).has(PermissionsBitField.Flags.SendMessages)
+            )
+            .map(member => member.id);
 
-            const members = await channel.guild.members.fetch().catch(error =>{
-                if(error.code === 'GuildMembersTimeout'){
-                    console.log('Error fetching members: Timed out');
-                    return null;                    
-                }
-                throw error;
-            })
+            const notInSheet = membersInChannel.filter(id => !sheetIds.includes(id)).map(id => ({
+                id: id,
+                mention: `<@${id}>`
+            }));
 
-            if(!membersInChannel){
-                await interaction.editReply({content: 'No se pudo obtener lista de miembros debido a un tiempo de espera', ephemeral: true});
-                return;
-            }
+ /*            if (notInSheet.length === 0) {
+                await interaction.editReply({ content: 'Todos los usuarios están en el sheet.', ephemeral: true });
+            } */
 
-            const notInSheet = membersInChannel.filter(member => !sheetIds.includes(member.id)).map(member =>({
+/*             const notInSheet = membersInChannel
+            .filter(member => !sheetIds.includes(member.id))
+            .map(member => ({
                 id: member.id,
                 mention: `<@${member.id}>`
             }));
+ */
 
             let messages = [];
             let lastMessageId = null;
@@ -225,10 +230,11 @@ module.exports = {
 
             const sentMessage = await targetChannel.send({ content: 
                  `Aca esta el historial de: ${channel.name}
-                 \nServidor = ${guild.id}
-                 \nUsuarios: ${notInSheet.map(member => `${membersInChannel.mention} (${member.id})`).join(' ')}  `,         
+                 \nServidor : ${guild.id}
+                 \nUsuarios: ${notInSheet.length > 0 ? notInSheet.map(member => `${member.mention} (${member.id})`).join(' ') : 'Todos están en el sheet'}`,         
                  files: [htmlFilePath] 
                 });
+
 
             if (sentMessage) {
                 const channel = interaction.channel;
