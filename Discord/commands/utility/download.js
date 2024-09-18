@@ -13,7 +13,7 @@ const allowedUserIds = [
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('descargar')
+        .setName('borrar')
         .setDescription('Descarga toda la conversación y elimina el canal'),
     
     async execute(interaction) {
@@ -24,25 +24,27 @@ module.exports = {
 
         await interaction.deferReply({ ephemeral: true }); 
 
-        const allowedCategoryIds = ['1257667147476238420', '1276634815717707849']; // IDs de categorías permitidas
-
-       
-        if (!allowedCategoryIds.includes(interaction.channel.parentId)) {
-            const embed = new EmbedBuilder()
-                .setColor(0xff0000)
-                .setTitle('Acción restringida')
-                .setDescription('Este canal no puede ser procesado ya que no pertenece a una categoría permitida.');
-
-            await interaction.editReply({ embeds: [embed], ephemeral: true });
-            return;
-        }
-
         try {
             const channel = interaction.channel;
             const guild = channel.guild;
             const allMembers = await guild.members.fetch();
 
-            const sheetIds = await getSheetData();
+            const sheetData  = await getSheetData();
+
+            // Filtrar para obtener solo las categorías permitidas de cada fila en Google Sheets
+            const allowedCategories = sheetData.map(row => row.allowedCategories).flat();
+            
+            const categoryId = interaction.channel.parentId;
+
+            if (!allowedCategories.includes(categoryId)) {
+                const embed = new EmbedBuilder()
+                    .setColor(0xff0000)
+                    .setTitle('Acción restringida')
+                    .setDescription('Este canal no puede ser procesado ya que no pertenece a una categoría permitida.');
+
+                await interaction.editReply({ embeds: [embed], ephemeral: true });
+                return;
+            }
 
             const membersInChannel = allMembers
             .filter(member => 
@@ -51,22 +53,12 @@ module.exports = {
             )
             .map(member => member.id);
 
-            const notInSheet = membersInChannel.filter(id => !sheetIds.includes(id)).map(id => ({
-                id: id,
-                mention: `<@${id}>`
-            }));
+            const sheetIds = sheetData.map(row => row.userId);
 
- /*            if (notInSheet.length === 0) {
-                await interaction.editReply({ content: 'Todos los usuarios están en el sheet.', ephemeral: true });
-            } */
+            const notInSheet = membersInChannel
+            .filter(id => !sheetIds.includes(id))
+            .map(id => `<@${id}> (${id})`);
 
-/*             const notInSheet = membersInChannel
-            .filter(member => !sheetIds.includes(member.id))
-            .map(member => ({
-                id: member.id,
-                mention: `<@${member.id}>`
-            }));
- */
 
             let messages = [];
             let lastMessageId = null;
@@ -228,13 +220,14 @@ module.exports = {
                 throw new Error('El canal de destino no es válido.');
             }
 
-            const sentMessage = await targetChannel.send({ content: 
-                 `Aca esta el historial de: ${channel.name}
-                 \nServidor : ${guild.id}
-                 \nUsuarios: ${notInSheet.length > 0 ? notInSheet.map(member => `${member.mention} (${member.id})`).join(' ') : 'Todos están en el sheet'}`,         
-                 files: [htmlFilePath] 
-                });
 
+
+                const sentMessage = await targetChannel.send({
+                    content: `Aca esta el historial de: ${channel.name}
+                    \nServidor : ${guild.id}
+                    \nUsuarios: ${notInSheet.length > 0 ? notInSheet.join(' ') : 'Todos están en el sheet'}`,
+                    files: [htmlFilePath]
+                });
 
             if (sentMessage) {
                 const channel = interaction.channel;
