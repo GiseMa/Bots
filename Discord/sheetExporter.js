@@ -11,7 +11,7 @@ async function getSheetData(){
 
     const client = await auth.getClient();
     const spreadsheetId = '1IVxOLQbjwpHJMhokDK2YU2MNRGJja9P7BcqEv4CCGQY';
-    const range = 'NGA:A'
+    const range = 'NG!A2:B';
 
     const response = await sheets.spreadsheets.values.get({
         spreadsheetId,
@@ -19,7 +19,11 @@ async function getSheetData(){
         auth: client,
     });
 
-    return response.data.values.flat();
+    return response.data.values.map(row =>({
+        userId: row[0],
+        allowedCategories: row[1]?.split(',').map(category => category.trim()) || []
+
+    }));
 }
 
 module.exports = {
