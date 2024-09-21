@@ -1,15 +1,11 @@
-const { SlashCommandBuilder, EmbedBuilder, PermissionsBitField } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, PermissionsBitField, ChannelType } = require('discord.js');
 const fs = require('fs');
 const path = require('node:path');
 const axios = require('axios');
 const { getSheetData } = require('../../sheetExporter');
 
-const TARGET_CHANNEL_ID = '1279182539935842397';
-
-const allowedUserIds = [
-    '1257631834951516185',
-    '1085379498977017896',
-]; // IDs de usuarios permitidos
+const TARGET_CHANNEL_ID = '1279182539935842397'; // Canal para enviar el embed
+const HTML_CHANNEL_ID = '1276643047853129881';  // Canal para enviar el archivo HTML
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -17,8 +13,12 @@ module.exports = {
         .setDescription('Descarga toda la conversación y elimina el canal'),
     
     async execute(interaction) {
-        // Chequeando si el usuario esta habilitado para usar el comando
-        if (!allowedUserIds.includes(interaction.user.id)) {
+
+        const sheetData = await getSheetData();
+
+        const allowedUsers = sheetData.flatMap(row => row.userId);
+
+        if (!allowedUsers.includes(interaction.user.id)) {
             return await interaction.reply({ content: 'No tienes permiso para usar este comando.', ephemeral: true });
         }
 
@@ -31,9 +31,7 @@ module.exports = {
 
             const sheetData  = await getSheetData();
 
-            // Filtrar para obtener solo las categorías permitidas de cada fila en Google Sheets
             const allowedCategories = sheetData.map(row => row.allowedCategories).flat();
-            
             const categoryId = interaction.channel.parentId;
 
             if (!allowedCategories.includes(categoryId)) {
@@ -72,7 +70,6 @@ module.exports = {
                 lastMessageId = fetchedMessages.last().id;
             }
 
-            // HTML revertido
             messages.reverse();
 
             const tempDir = path.join(__dirname, 'temp');
@@ -106,36 +103,30 @@ module.exports = {
             </head>
             <body>`;
 
+            // Obtener referencia al canal HTML_CHANNEL_ID
+            const fileChannel = await interaction.client.channels.fetch(HTML_CHANNEL_ID);
+            if (!fileChannel || fileChannel.type !== ChannelType.GuildText) {
+                throw new Error('El canal para enviar el archivo no es válido o no es un canal de texto.');
+            }
+
             for (const message of messages) {
                 const author = message.author;
                 const content = message.content.replace(/\n/g, '<br>'); 
                 const timestamp = `${message.createdAt.getDate().toString().padStart(2, '0')}/${(message.createdAt.getMonth() + 1).toString().padStart(2, '0')}/${message.createdAt.getFullYear().toString().slice(-2)} ${message.createdAt.toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true })}`;
-
+                
                 let replyContent = '';
-
-            //Chequea si el mensaje es en respuesta a otro mensaje
+                    
                 if (message.reference && message.reference.messageId) {
                     const referencedMessage = await channel.messages.fetch(message.reference.messageId).catch(() => null);
                     if (referencedMessage) {
                         const refAuthor = referencedMessage.author;
                         const refContent = referencedMessage.content.length > 100 ? referencedMessage.content.substring(0, 100) + '...' : referencedMessage.content;
-
-                        if (referencedMessage.attachments.size > 0) {
-                            replyContent = `
-                            <div class="reply">
-                                <strong>${refAuthor.username}:</strong> <em>Attachment</em>
-                                <a href="#message-${referencedMessage.id}" class="reply-link">Click to see attachment</a>
-                            </div>`;
-                        } else {
-                            replyContent = `
-                            <div class="reply">
-                                <strong>${refAuthor.username}:</strong> ${refContent.replace(/\n/g, '<br>')}
-                                <a href="#message-${referencedMessage.id}" class="reply-link">Go to message</a>
-                            </div>`;
-                        }
+                        replyContent = referencedMessage.attachments.size > 0
+                            ? `<div class="reply"><strong>${refAuthor.username}:</strong> <em>Attachment</em></div>`
+                            : `<div class="reply"><strong>${refAuthor.username}:</strong> ${refContent.replace(/\n/g, '<br>')}</div>`;
                     }
                 }
-
+                
                 htmlContent += `
                 <div id="message-${message.id}" class="message">
                     <img class="avatar" src="${author.displayAvatarURL({ format: 'png' })}" alt="${author.username}">
@@ -147,22 +138,26 @@ module.exports = {
                         </div>
                         <div>${content}</div>`;
 
-              
+                // Manejo de imágenes adjuntas
                 if (message.attachments.size > 0) {
                     for (const [attachmentId, attachment] of message.attachments) {
-                        const filePath = path.join(tempDir, attachment.name);
-                        await downloadFile(attachment.url, filePath);
-
+                        // Subir cada imagen al canal HTML_CHANNEL_ID
+                        const imageMessage = await fileChannel.send({
+                            files: [attachment.url], // Usa la URL del attachment
+                        });
+                
+                        // Obtener la URL de la imagen en Discord
+                        const imageUrl = imageMessage.attachments.first().url;
+                
                         if (attachment.contentType && attachment.contentType.startsWith('image')) {
-                       
-                            htmlContent += `<img src="${filePath}" alt="${attachment.name}" />`;
+                            // Usar la URL de Discord en el HTML
+                            htmlContent += `<img src="${imageUrl}" alt="${attachment.name}" />`;
                         } else {
-                            htmlContent += `<a href="${filePath}">${attachment.name}</a>`;
+                            htmlContent += `<a href="${imageUrl}">${attachment.name}</a>`;
                         }
                     }
                 }
 
-          
                 if (message.embeds.length > 0) {
                     message.embeds.forEach(embed => {
                         htmlContent += `<div class="embed">`;
@@ -199,14 +194,6 @@ module.exports = {
                     });
                 }
 
-                if (message.components && message.components.length > 0) {
-                    message.components.forEach(component => {
-                        component.components.forEach(button => {
-                            htmlContent += `<button class="button ${button.style === 1 ? 'button-primary' : 'button-secondary'}">${button.label}</button>`;
-                        });
-                    });
-                }
-
                 htmlContent += `</div></div>`;
             }
 
@@ -215,27 +202,33 @@ module.exports = {
             const htmlFilePath = path.join(tempDir, 'conversation.html');
             fs.writeFileSync(htmlFilePath, htmlContent);
 
+            // Enviar el archivo HTML al HTML_CHANNEL_ID
+            const sentMessage = await fileChannel.send({ files: [htmlFilePath] });
+            const fileUrl = sentMessage.attachments.first().url; 
+
+            // Enviar el embed al canal TARGET_CHANNEL_ID con el enlace al archivo
             const targetChannel = await interaction.client.channels.fetch(TARGET_CHANNEL_ID);
             if (!targetChannel) {
                 throw new Error('El canal de destino no es válido.');
             }
 
+            const embed = new EmbedBuilder()
+                .setColor(0x00ff00)
+                .setTitle('Historial de canal')
+                .setDescription(`Aquí está el historial de **${channel.name}** del servidor **${guild.name}** (${guild.id}).`)
+                .addFields(
+                    { name: 'Usuarios', value: notInSheet.length > 0 ? notInSheet.join('\n') : 'Todos están en el sheet' },
+                    { name: 'Descargar el archivo', value: `[Apreta aqui](${fileUrl})` }
+                )
+                .setTimestamp();
 
+            await targetChannel.send({ embeds: [embed] });
+/*             await interaction.editReply({ content: 'El historial del canal ha sido enviado y el canal será eliminado.', ephemeral: true });
+ */
 
-                const sentMessage = await targetChannel.send({
-                    content: `Aca esta el historial de: ${channel.name}
-                    \nServidor : ${guild.id}
-                    \nUsuarios: ${notInSheet.length > 0 ? notInSheet.join(' ') : 'Todos están en el sheet'}`,
-                    files: [htmlFilePath]
-                });
+            await channel.delete();
 
-            if (sentMessage) {
-                const channel = interaction.channel;
-                await channel.delete();
-            } else {
-                await interaction.editReply({ content: 'El archivo no se pudo enviar al canal especificado.', ephemeral: true });
-            }
-
+            // Eliminar el archivo temporal
             fs.unlinkSync(htmlFilePath);
 
         } catch (error) {
@@ -244,4 +237,3 @@ module.exports = {
         }
     },
 };
-         

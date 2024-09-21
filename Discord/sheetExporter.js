@@ -11,7 +11,7 @@ async function getSheetData(){
 
     const client = await auth.getClient();
     const spreadsheetId = '1IVxOLQbjwpHJMhokDK2YU2MNRGJja9P7BcqEv4CCGQY';
-    const range = 'NG!A2:B';
+    const range = 'NG!A2:C';
 
     const response = await sheets.spreadsheets.values.get({
         spreadsheetId,
@@ -21,7 +21,8 @@ async function getSheetData(){
 
     return response.data.values.map(row =>({
         userId: row[0],
-        allowedCategories: row[1]?.split(',').map(category => category.trim()) || []
+        allowedCategories: row[1]?.split(',').map(category => category.trim()) || [],
+        guildIds: row[2]?.split(',').map(guildId => guildId.trim()) || [],
 
     }));
 }
