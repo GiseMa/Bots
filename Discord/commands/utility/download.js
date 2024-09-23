@@ -1,7 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionsBitField, ChannelType } = require('discord.js');
 const fs = require('fs');
 const path = require('node:path');
-const axios = require('axios');
+const axios = require('axios'); 
 const { getSheetData } = require('../../sheetExporter');
 
 const TARGET_CHANNEL_ID = '1279182539935842397'; // Canal para enviar el embed
@@ -141,16 +141,13 @@ module.exports = {
                 // Manejo de imágenes adjuntas
                 if (message.attachments.size > 0) {
                     for (const [attachmentId, attachment] of message.attachments) {
-                        // Subir cada imagen al canal HTML_CHANNEL_ID
                         const imageMessage = await fileChannel.send({
                             files: [attachment.url], // Usa la URL del attachment
                         });
                 
-                        // Obtener la URL de la imagen en Discord
                         const imageUrl = imageMessage.attachments.first().url;
                 
                         if (attachment.contentType && attachment.contentType.startsWith('image')) {
-                            // Usar la URL de Discord en el HTML
                             htmlContent += `<img src="${imageUrl}" alt="${attachment.name}" />`;
                         } else {
                             htmlContent += `<a href="${imageUrl}">${attachment.name}</a>`;
@@ -202,7 +199,6 @@ module.exports = {
             const htmlFilePath = path.join(tempDir, 'conversation.html');
             fs.writeFileSync(htmlFilePath, htmlContent);
 
-            // Enviar el archivo HTML al HTML_CHANNEL_ID
             const sentMessage = await fileChannel.send({ files: [htmlFilePath] });
             const fileUrl = sentMessage.attachments.first().url; 
 
@@ -218,17 +214,16 @@ module.exports = {
                 .setDescription(`Aquí está el historial de **${channel.name}** del servidor **${guild.name}** (${guild.id}).`)
                 .addFields(
                     { name: 'Usuarios', value: notInSheet.length > 0 ? notInSheet.join('\n') : 'Todos están en el sheet' },
-                    { name: 'Descargar el archivo', value: `[Apreta aqui](${fileUrl})` }
+                    { name: 'Para descargar el archivo', value: `[Apreta aquí](${fileUrl})` },
                 )
+                .setFooter({ text: `Comando ejecutado por ${intereaction.user.tag}`})
                 .setTimestamp();
 
             await targetChannel.send({ embeds: [embed] });
-/*             await interaction.editReply({ content: 'El historial del canal ha sido enviado y el canal será eliminado.', ephemeral: true });
- */
+
 
             await channel.delete();
 
-            // Eliminar el archivo temporal
             fs.unlinkSync(htmlFilePath);
 
         } catch (error) {
