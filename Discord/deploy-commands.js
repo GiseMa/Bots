@@ -7,7 +7,6 @@ const { getSheetData } = require('./sheetExporter');
 async function updateGuilds() {
     try {
         const sheetData = await getSheetData();
-        console.log('Datos obtenidos de Google Sheets:', sheetData);
 
         const newGuildIds = [...new Set(sheetData.flatMap(row => row.guildIds))];
 

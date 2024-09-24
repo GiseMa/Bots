@@ -216,7 +216,7 @@ module.exports = {
                     { name: 'Usuarios', value: notInSheet.length > 0 ? notInSheet.join('\n') : 'Todos están en el sheet' },
                     { name: 'Para descargar el archivo', value: `[Apreta aquí](${fileUrl})` },
                 )
-                .setFooter({ text: `Comando ejecutado por ${intereaction.user.tag}`})
+                .setFooter({ text: `Comando ejecutado por ${interaction.user.tag}`})
                 .setTimestamp();
 
             await targetChannel.send({ embeds: [embed] });
