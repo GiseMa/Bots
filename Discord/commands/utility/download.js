@@ -33,11 +33,6 @@ module.exports = {
 
             const allowedCategories = sheetData.map(row => row.allowedCategories).flat();
             const categoryId = interaction.channel.parentId;
-            const tempDir = path.join(__dirname, '../utility/temp');
-
-            if (!fs.existsSync(tempDir)) {
-                fs.mkdirSync(tempDir);
-            }
 
             if (!allowedCategories.includes(categoryId)) {
                 const embed = new EmbedBuilder()
@@ -77,6 +72,10 @@ module.exports = {
 
             messages.reverse();
 
+            const tempDir = path.join(__dirname, 'temp');
+            if (!fs.existsSync(tempDir)) {
+                fs.mkdirSync(tempDir);
+            }
 
             async function downloadFile(url, filePath) {
                 const response = await axios({
@@ -105,12 +104,12 @@ module.exports = {
             <body>`;
 
             // Obtener referencia al canal HTML_CHANNEL_ID
-/*             const fileChannel = await interaction.client.channels.fetch(HTML_CHANNEL_ID);
+            const fileChannel = await interaction.client.channels.fetch(HTML_CHANNEL_ID);
             if (!fileChannel || fileChannel.type !== ChannelType.GuildText) {
                 throw new Error('El canal para enviar el archivo no es válido o no es un canal de texto.');
-            } */
+            } 
 
-       /*      for (const message of messages) {
+            for (const message of messages) {
                 const author = message.author;
                 const content = message.content.replace(/\n/g, '<br>'); 
                 const timestamp = `${message.createdAt.getDate().toString().padStart(2, '0')}/${(message.createdAt.getMonth() + 1).toString().padStart(2, '0')}/${message.createdAt.getFullYear().toString().slice(-2)} ${message.createdAt.toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true })}`;
@@ -155,42 +154,7 @@ module.exports = {
                             htmlContent += `<a href="${imageUrl}">${attachment.name}</a>`;
                         }
                     }
-                } */
-
-
-            for (const message of messages) {
-                const author = message.author;
-                const content = message.content.replace(/\n/g, '<br>');
-                const timestamp = `${message.createdAt.getDate().toString().padStart(2, '0')}/${(message.createdAt.getMonth() + 1).toString().padStart(2, '0')}/${message.createdAt.getFullYear()} ${message.createdAt.toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true })}`;
-
-                let replyContent = '';
-                if (message.reference && message.reference.messageId) {
-                    const referencedMessage = await channel.messages.fetch(message.reference.messageId).catch(() => null);
-                    if (referencedMessage) {
-                        const refAuthor = referencedMessage.author;
-                        const refContent = referencedMessage.content.length > 100 ? referencedMessage.content.substring(0, 100) + '...' : referencedMessage.content;
-                        replyContent = `<div class="reply"><strong>${refAuthor.username}:</strong> ${refContent.replace(/\n/g, '<br>')}</div>`;
-                    }
-                }
-
-                htmlContent += `
-                <div id="message-${message.id}" class="message">
-                    <img class="avatar" src="${author.displayAvatarURL({ format: 'png' })}" alt="${author.username}">
-                    <div class="content">
-                        ${replyContent}
-                        <div>
-                            <span class="username">${author.username}</span>
-                            <span class="timestamp">${timestamp}</span>
-                        </div>
-                        <div>${content}</div>`;
-
-                if (message.attachments.size > 0) {
-                    for (const [attachmentId, attachment] of message.attachments) {
-                        const filePath = path.join(tempDir, attachment.name);
-                        await downloadFile(attachment.url, filePath);
-                        htmlContent += `<img src="file://${filePath}" alt="${attachment.name}" />`;
-                    }
-                }
+                } 
 
                 if (message.embeds.length > 0) {
                     message.embeds.forEach(embed => {
@@ -233,19 +197,18 @@ module.exports = {
 
             htmlContent += `</body></html>`;
 
-            const htmlFilePath = path.join(tempDir, 'conversation.html');
+            const channelName = channel.name.replace(/[^a-zA-Z0-9-_]/g, "_");
+            const htmlFilePath = path.join(tempDir,  `${channelName}_conversation.html`);
             fs.writeFileSync(htmlFilePath, htmlContent);
+            
 
-/*             const sentMessage = await fileChannel.send({ files: [htmlFilePath] });
-            const fileUrl = sentMessage.attachments.first().url;  */
-
+    
             // Enviar el embed al canal TARGET_CHANNEL_ID con el enlace al archivo
-            const targetChannel = await interaction.client.channels.fetch(TARGET_CHANNEL_ID);
-            const htmlChannel = await interaction.client.channels.fetch(HTML_CHANNEL_ID);
+            //const htmlChannel = await interaction.client.channels.fetch(HTML_CHANNEL_ID);
 
-            if (!targetChannel) {
-                throw new Error('El canal de destino no es válido.');
-            }
+                        
+
+            //await htmlChannel.send({ content: "Historial de conversación en HTML:", files: [htmlFilePath] });
 
 /*             const embed = new EmbedBuilder()
                 .setColor(0x00ff00)
@@ -270,9 +233,12 @@ module.exports = {
                 .setFooter({ text: `Comando ejecutado por ${interaction.user.tag}` })
                 .setTimestamp();
 
-            await targetChannel.send({ embeds: [embed], files: [htmlFilePath]});
-            await htmlChannel.send({content: "Historial de conversacion en HTML:", files: [htmlFilePath]})
-
+                
+            const targetChannel = await interaction.client.channels.fetch(TARGET_CHANNEL_ID);
+            if (!targetChannel) throw new Error('El canal de destino no es válido.');
+            await targetChannel.send({ embeds: [embed], files: [htmlFilePath] });
+            await fileChannel.send({ embeds: [embed], files: [htmlFilePath] });
+    
 
             await channel.delete();
 
